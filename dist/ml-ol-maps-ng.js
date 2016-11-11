@@ -142,19 +142,17 @@
     ctrl.addMapNodes = function(data) {
       var tmpPoints = [];
       var i = 0;
+      var feature = null;
       if (data && Array.isArray(data)) {
         for (i = 0; i < data.length; i++) {
           if (data[i].geometry) {
-            tmpPoints.push({
-              type: 'Feature',
-              id: data[i].id ? data[i].id : 'feature' + i,
-              properties: {
-                name: data[i].name,
-                id: data[i].id ? data[i].id : 'feature' + i,
-                uri: data[i].uri
-              },
-              geometry: data[i].geometry
-            });
+            feature = data[i];
+
+            if (feature.properties.id !== null) {
+              feature.properties.id = 'feature' + 1;
+            }
+
+            tmpPoints.push(feature);
           }
         }
       }
@@ -641,19 +639,17 @@
     ctrl.addMapNodes = function(data) {
       var tmpPoints = [];
       var i = 0;
+      var feature = null;
       if (data && Array.isArray(data)) {
         for (i = 0; i < data.length; i++) {
           if (data[i].geometry) {
-            tmpPoints.push({
-              type: 'Feature',
-              id: data[i].id ? data[i].id : 'feature' + i,
-              properties: {
-                name: data[i].name,
-                id: data[i].id ? data[i].id : 'feature' + i,
-                uri: data[i].uri
-              },
-              geometry: data[i].geometry
-            });
+            feature = data[i];
+
+            if (feature.properties.id !== null) {
+              feature.properties.id = 'feature' + 1;
+            }
+
+            tmpPoints.push(feature);
           }
         }
       }
