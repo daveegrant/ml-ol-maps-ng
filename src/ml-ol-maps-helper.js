@@ -18,13 +18,17 @@
       '#17e804'   // lime-green
     ];
 
-    var createTextStyle = function(text) {
+    var createTextStyle = function(text, fColor) {
+      var fillColor = '#f70010';
+      if (fColor) {
+        fillColor = fColor;
+      }
       return new ol.style.Text({
         textAlign: 'center',
         textBaseline: 'top',
         font: '12px Arial',
         text: text,
-        fill: new ol.style.Fill({color: 'red'}),
+        fill: new ol.style.Fill({color: fillColor}),
         stroke: new ol.style.Stroke({color: 'white', width: 3}),
         offsetX: 0,
         offsetY: 4,
@@ -43,6 +47,34 @@
         offsetY: 0,
         rotation: 0
       });
+    };
+
+    var createLineStyle = function(feature, resolution) {
+      // var geometry = feature.getGeometry();
+      var styles = [
+        new ol.style.Style({
+          stroke: new ol.style.Stroke({color: 'black', width: 3}),
+          text: createTextStyle(feature.get('name'), 'black')
+        })
+      ];
+
+      // geometry.forEachSegment(function(start, end) {
+      //   var dx = end[0] - start[0];
+      //   var dy = end[1] - start[1];
+      //   var rotation = Math.atan2(dy, dx);
+      //   // arrows
+      //   styles.push(new ol.style.Style({
+      //     geometry: new ol.geom.Point(end),
+      //     image: new ol.style.Icon({
+      //       src: 'images/arrow-black.png',
+      //       anchor: [1.5, 0.5],
+      //       rotateWithView: false,
+      //       rotation: -rotation
+      //     })
+      //   }));
+      // });
+
+      return styles;
     };
 
     var createPointStyle = function(feature, resolution) {
@@ -167,6 +199,7 @@
       createPointStyle: createPointStyle,
       createClusterPointStyle: createClusterPointStyle,
       createClusterTextStyle: createClusterTextStyle,
+      createLineStyle: createLineStyle,
       convertExtent: convertExtent,
       buildMapSettings: buildMapSettings
     };
