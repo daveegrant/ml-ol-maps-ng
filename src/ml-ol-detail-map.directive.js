@@ -15,6 +15,7 @@
         baseMap: '=',
         zoom: '=',
         geometry: '=',
+        enableLinks: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick'
@@ -25,11 +26,16 @@
     };
   }
 
-  MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper'];
-  function MLOlDetailMapController($scope, mlOlHelper) {
+  MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper', 'mapLinksService'];
+  function MLOlDetailMapController($scope, mlOlHelper, mapLinksService) {
     var ctrl = this;
     ctrl.pointMap = {};
     ctrl.geometries = [];
+
+    ctrl.hideLinks = false;
+    if ($scope.enableLinks !== undefined) {
+      ctrl.hideLinks = !$scope.enableLinks;
+    }
 
     $scope.$watch('features', function(data) {
       ctrl.addMapNodes($scope.features);
@@ -48,9 +54,20 @@
           if ($scope.parentSingleClick) {
             $scope.parentSingleClick({ 'featureUri': featureUri });
           }
+
+          if ($scope.enableLinks) {
+            mapLinksService.search(featureUri).then(function(items) {
+              ctrl.addLinkedNodes(items);
+              ctrl.addLinks(items);
+            });
+          }
         });
       });
     });
+
+    ctrl.toggleHideLinks = function() {
+      ctrl.mapSettings.lineLayer.visible = !ctrl.hideLinks;
+    };
 
     ctrl.addLinkedNodes = function(results) {
       var tmpPoints = [];
@@ -211,19 +228,27 @@
       ctrl.centerMap();
     };
 
+    ctrl.loadInitialData = function() {
+      ctrl.addMapNodes($scope.features);
+      if ($scope.geometry) {
+        ctrl.addGeometries($scope.geometry);
+      }
+    };
+
+    ctrl.resetData = function() {
+      ctrl.mapSettings.ptLayer.source.geojson.object.features = [];
+      ctrl.mapSettings.lineLayer.source.geojson.object.features = [];
+
+      ctrl.addMapNodes($scope.features);
+      if ($scope.geometry) {
+        ctrl.addGeometries($scope.geometry);
+      }
+    };
+
     // Default layer for lines.
     var defaultLineLayer = {
       name: 'lineLayer',
-      style: {
-        fill: {
-          color: 'rgba(255, 0, 255, 0.6)'
-        },
-        stroke: {
-          color: 'blue',
-          width: 3
-        },
-        label: '${name}'
-      },
+      style: mlOlHelper.createLineStyle,
       source: {
         type: 'GeoJSON',
         geojson: {
@@ -251,10 +276,7 @@
     }
 
     ctrl.mapSettings = tmpMapSettings;
-    ctrl.addMapNodes($scope.features);
-    if ($scope.geometry) {
-      ctrl.addGeometries($scope.geometry);
-    }
+    ctrl.loadInitialData();
   }
 
 }());

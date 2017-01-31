@@ -21,6 +21,7 @@
         baseMap: '=',
         zoom: '=',
         geometry: '=',
+        enableLinks: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick'
@@ -31,11 +32,16 @@
     };
   }
 
-  MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper'];
-  function MLOlDetailMapController($scope, mlOlHelper) {
+  MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper', 'mapLinksService'];
+  function MLOlDetailMapController($scope, mlOlHelper, mapLinksService) {
     var ctrl = this;
     ctrl.pointMap = {};
     ctrl.geometries = [];
+
+    ctrl.hideLinks = false;
+    if ($scope.enableLinks !== undefined) {
+      ctrl.hideLinks = !$scope.enableLinks;
+    }
 
     $scope.$watch('features', function(data) {
       ctrl.addMapNodes($scope.features);
@@ -54,9 +60,20 @@
           if ($scope.parentSingleClick) {
             $scope.parentSingleClick({ 'featureUri': featureUri });
           }
+
+          if ($scope.enableLinks) {
+            mapLinksService.search(featureUri).then(function(items) {
+              ctrl.addLinkedNodes(items);
+              ctrl.addLinks(items);
+            });
+          }
         });
       });
     });
+
+    ctrl.toggleHideLinks = function() {
+      ctrl.mapSettings.lineLayer.visible = !ctrl.hideLinks;
+    };
 
     ctrl.addLinkedNodes = function(results) {
       var tmpPoints = [];
@@ -217,19 +234,27 @@
       ctrl.centerMap();
     };
 
+    ctrl.loadInitialData = function() {
+      ctrl.addMapNodes($scope.features);
+      if ($scope.geometry) {
+        ctrl.addGeometries($scope.geometry);
+      }
+    };
+
+    ctrl.resetData = function() {
+      ctrl.mapSettings.ptLayer.source.geojson.object.features = [];
+      ctrl.mapSettings.lineLayer.source.geojson.object.features = [];
+
+      ctrl.addMapNodes($scope.features);
+      if ($scope.geometry) {
+        ctrl.addGeometries($scope.geometry);
+      }
+    };
+
     // Default layer for lines.
     var defaultLineLayer = {
       name: 'lineLayer',
-      style: {
-        fill: {
-          color: 'rgba(255, 0, 255, 0.6)'
-        },
-        stroke: {
-          color: 'blue',
-          width: 3
-        },
-        label: '${name}'
-      },
+      style: mlOlHelper.createLineStyle,
       source: {
         type: 'GeoJSON',
         geojson: {
@@ -257,14 +282,56 @@
     }
 
     ctrl.mapSettings = tmpMapSettings;
-    ctrl.addMapNodes($scope.features);
-    if ($scope.geometry) {
-      ctrl.addGeometries($scope.geometry);
-    }
+    ctrl.loadInitialData();
   }
 
 }());
 
+(function () {
+
+  'use strict';
+
+  angular.module('ml.ol-maps')
+  .provider('mapLinksService', MapLinksService);
+
+  MapLinksService.$inject = [];
+  function MapLinksService() {
+    var api = '/v1/resources/map-links';
+    this.setApi = function(url) {
+      api = url;
+    };
+
+    this.$get = function($http) {
+      var service = {
+        search: search,
+        expand: expand,
+      };
+
+      function search(id) {
+        return $http.get(api+'?rs:subject=' + encodeURIComponent(id)
+        )
+        .then(
+          function(response) {
+            return response.data;
+          }
+        );
+      }
+
+      function expand(id) {
+        return $http.get(
+          api+'?rs:expand=true&rs:subject=' + encodeURIComponent(id)
+        )
+        .then(
+          function (response) {
+            return response.data;
+          });
+      }
+
+      return service;
+    };
+  }
+
+}());
 (function () {
 
   'use strict';
@@ -285,13 +352,17 @@
       '#17e804'   // lime-green
     ];
 
-    var createTextStyle = function(text) {
+    var createTextStyle = function(text, fColor) {
+      var fillColor = '#f70010';
+      if (fColor) {
+        fillColor = fColor;
+      }
       return new ol.style.Text({
         textAlign: 'center',
         textBaseline: 'top',
         font: '12px Arial',
         text: text,
-        fill: new ol.style.Fill({color: 'red'}),
+        fill: new ol.style.Fill({color: fillColor}),
         stroke: new ol.style.Stroke({color: 'white', width: 3}),
         offsetX: 0,
         offsetY: 4,
@@ -310,6 +381,34 @@
         offsetY: 0,
         rotation: 0
       });
+    };
+
+    var createLineStyle = function(feature, resolution) {
+      // var geometry = feature.getGeometry();
+      var styles = [
+        new ol.style.Style({
+          stroke: new ol.style.Stroke({color: 'black', width: 3}),
+          text: createTextStyle(feature.get('name'), 'black')
+        })
+      ];
+
+      // geometry.forEachSegment(function(start, end) {
+      //   var dx = end[0] - start[0];
+      //   var dy = end[1] - start[1];
+      //   var rotation = Math.atan2(dy, dx);
+      //   // arrows
+      //   styles.push(new ol.style.Style({
+      //     geometry: new ol.geom.Point(end),
+      //     image: new ol.style.Icon({
+      //       src: 'images/arrow-black.png',
+      //       anchor: [1.5, 0.5],
+      //       rotateWithView: false,
+      //       rotation: -rotation
+      //     })
+      //   }));
+      // });
+
+      return styles;
     };
 
     var createPointStyle = function(feature, resolution) {
@@ -434,6 +533,7 @@
       createPointStyle: createPointStyle,
       createClusterPointStyle: createClusterPointStyle,
       createClusterTextStyle: createClusterTextStyle,
+      createLineStyle: createLineStyle,
       convertExtent: convertExtent,
       buildMapSettings: buildMapSettings
     };
