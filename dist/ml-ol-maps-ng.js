@@ -556,6 +556,7 @@
         baseMap: '=',
         zoom: '=',
         facets: '=',
+        center: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick',
@@ -659,6 +660,11 @@
       tmpMapSettings.center.zoom = $scope.zoom;
     }
 
+    if ($scope.center) {
+      tmpMapSettings.center.lat = $scope.center.lat;
+      tmpMapSettings.center.lon = $scope.center.lon;
+    }
+
     if ($scope.baseMap) {
       tmpMapSettings.baseMap = $scope.baseMap;
     }
@@ -688,6 +694,7 @@
         features: '=',
         baseMap: '=',
         zoom: '=',
+        center: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick',
@@ -763,6 +770,11 @@
 
     if ($scope.zoom) {
       tmpMapSettings.center.zoom = $scope.zoom;
+    }
+
+    if ($scope.center) {
+      tmpMapSettings.center.lat = $scope.center.lat;
+      tmpMapSettings.center.lon = $scope.center.lon;
     }
 
     if ($scope.baseMap) {
