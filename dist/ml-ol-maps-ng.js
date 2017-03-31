@@ -24,7 +24,8 @@
         enableLinks: '=',
 
         // parent callbacks
-        parentSingleClick: '&singleClick'
+        parentSingleClick: '&singleClick',
+        parentDoubleClick: '&doubleClick'
       },
       templateUrl: '/templates/detail-map.html',
       controller: 'MLOlDetailMapController',
@@ -54,11 +55,31 @@
     });
 
     $scope.$on('openlayers.map.singleclick', function(event, data) {
-      data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
-        var featureUri = feature.get('uri');
+      if (data.event.map.hasFeatureAtPixel(data.event.pixel)) {
+        data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
+          $scope.$apply(function() {
+            if ($scope.parentSingleClick) {
+              $scope.parentSingleClick({ 'feature': feature });
+            }
+
+            // if (feature.get('metadata')) {
+            //   ctrl.mapItemSelected = feature.get('metadata');
+            // }
+          });
+        });
+      }
+      else {
         $scope.$apply(function() {
-          if ($scope.parentSingleClick) {
-            $scope.parentSingleClick({ 'featureUri': featureUri });
+          ctrl.mapItemSelected = null;
+        });
+      }
+    });
+
+    $scope.$on('openlayers.map.dblclick', function(event, data) {
+      data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
+        $scope.$apply(function() {
+          if ($scope.parentDoubleClick) {
+            $scope.parentDoubleClick({ 'feature': feature });
           }
 
           if ($scope.enableLinks) {
@@ -384,7 +405,7 @@
     };
 
     var createLineStyle = function(feature, resolution) {
-      // var geometry = feature.getGeometry();
+      var geometry = feature.getGeometry();
       var styles = [
         new ol.style.Style({
           stroke: new ol.style.Stroke({color: 'black', width: 3}),
@@ -392,21 +413,21 @@
         })
       ];
 
-      // geometry.forEachSegment(function(start, end) {
-      //   var dx = end[0] - start[0];
-      //   var dy = end[1] - start[1];
-      //   var rotation = Math.atan2(dy, dx);
-      //   // arrows
-      //   styles.push(new ol.style.Style({
-      //     geometry: new ol.geom.Point(end),
-      //     image: new ol.style.Icon({
-      //       src: 'images/arrow-black.png',
-      //       anchor: [1.5, 0.5],
-      //       rotateWithView: false,
-      //       rotation: -rotation
-      //     })
-      //   }));
-      // });
+      geometry.forEachSegment(function(start, end) {
+        var dx = end[0] - start[0];
+        var dy = end[1] - start[1];
+        var rotation = Math.atan2(dy, dx);
+        // arrows
+        styles.push(new ol.style.Style({
+          geometry: new ol.geom.Point(end),
+          image: new ol.style.Icon({
+            src: 'images/arrow-black.png',
+            anchor: [1.5, 0.5],
+            rotateWithView: false,
+            rotation: -rotation
+          })
+        }));
+      });
 
       return styles;
     };
@@ -489,7 +510,8 @@
         },
         defaults: {
           interactions: {
-            mouseWheelZoom: true
+            mouseWheelZoom: true,
+            doubleClickZoom: false
           },
           controls: {
             zoom: true,
@@ -497,7 +519,7 @@
             attribution: false
           },
           events: {
-            map: ['singleclick', 'moveend']
+            map: ['singleclick', 'dblclick', 'moveend']
           }
         },
         baseMap: {

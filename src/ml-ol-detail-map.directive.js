@@ -18,7 +18,8 @@
         enableLinks: '=',
 
         // parent callbacks
-        parentSingleClick: '&singleClick'
+        parentSingleClick: '&singleClick',
+        parentDoubleClick: '&doubleClick'
       },
       templateUrl: '/templates/detail-map.html',
       controller: 'MLOlDetailMapController',
@@ -48,11 +49,31 @@
     });
 
     $scope.$on('openlayers.map.singleclick', function(event, data) {
-      data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
-        var featureUri = feature.get('uri');
+      if (data.event.map.hasFeatureAtPixel(data.event.pixel)) {
+        data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
+          $scope.$apply(function() {
+            if ($scope.parentSingleClick) {
+              $scope.parentSingleClick({ 'feature': feature });
+            }
+
+            // if (feature.get('metadata')) {
+            //   ctrl.mapItemSelected = feature.get('metadata');
+            // }
+          });
+        });
+      }
+      else {
         $scope.$apply(function() {
-          if ($scope.parentSingleClick) {
-            $scope.parentSingleClick({ 'featureUri': featureUri });
+          ctrl.mapItemSelected = null;
+        });
+      }
+    });
+
+    $scope.$on('openlayers.map.dblclick', function(event, data) {
+      data.event.map.forEachFeatureAtPixel(data.event.pixel, function (feature, layer) {
+        $scope.$apply(function() {
+          if ($scope.parentDoubleClick) {
+            $scope.parentDoubleClick({ 'feature': feature });
           }
 
           if ($scope.enableLinks) {
