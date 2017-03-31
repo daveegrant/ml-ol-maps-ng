@@ -90,4 +90,9 @@ gulp.task('templates', function() {
     .pipe(gulp.dest('dist'));
 });
 
-gulp.task('default', ['styles', 'templates']);
+gulp.task('images', function() {
+  return gulp.src(['./src/images/*'])
+    .pipe(gulp.dest('dist/images'));
+});
+
+gulp.task('default', ['styles', 'templates', 'images']);

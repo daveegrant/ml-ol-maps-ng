@@ -58,21 +58,21 @@
         })
       ];
 
-      // geometry.forEachSegment(function(start, end) {
-      //   var dx = end[0] - start[0];
-      //   var dy = end[1] - start[1];
-      //   var rotation = Math.atan2(dy, dx);
-      //   // arrows
-      //   styles.push(new ol.style.Style({
-      //     geometry: new ol.geom.Point(end),
-      //     image: new ol.style.Icon({
-      //       src: 'images/arrow-black.png',
-      //       anchor: [1.5, 0.5],
-      //       rotateWithView: false,
-      //       rotation: -rotation
-      //     })
-      //   }));
-      // });
+      geometry.forEachSegment(function(start, end) {
+        var dx = end[0] - start[0];
+        var dy = end[1] - start[1];
+        var rotation = Math.atan2(dy, dx);
+        // arrows
+        styles.push(new ol.style.Style({
+          geometry: new ol.geom.Point(end),
+          image: new ol.style.Icon({
+            src: 'images/arrow-black.png',
+            anchor: [1.5, 0.5],
+            rotateWithView: false,
+            rotation: -rotation
+          })
+        }));
+      });
 
       return styles;
     };
