@@ -50,7 +50,7 @@
     };
 
     var createLineStyle = function(feature, resolution) {
-      // var geometry = feature.getGeometry();
+      var geometry = feature.getGeometry();
       var styles = [
         new ol.style.Style({
           stroke: new ol.style.Stroke({color: 'black', width: 3}),
@@ -155,7 +155,8 @@
         },
         defaults: {
           interactions: {
-            mouseWheelZoom: true
+            mouseWheelZoom: true,
+            doubleClickZoom: false
           },
           controls: {
             zoom: true,
@@ -163,7 +164,7 @@
             attribution: false
           },
           events: {
-            map: ['singleclick', 'moveend']
+            map: ['singleclick', 'dblclick', 'moveend']
           }
         },
         baseMap: {
