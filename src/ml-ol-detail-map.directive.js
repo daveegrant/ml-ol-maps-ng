@@ -77,7 +77,7 @@
           }
 
           if ($scope.enableLinks) {
-            mapLinksService.search(featureUri).then(function(items) {
+            mapLinksService.search(feature.get('uri')).then(function(items) {
               ctrl.addLinkedNodes(items);
               ctrl.addLinks(items);
             });
