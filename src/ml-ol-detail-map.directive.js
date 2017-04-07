@@ -15,7 +15,9 @@
         baseMap: '=',
         zoom: '=',
         geometry: '=',
+        groups: '=',
         enableLinks: '=',
+        enablePropertiesView: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick',
@@ -30,12 +32,25 @@
   MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper', 'mapLinksService'];
   function MLOlDetailMapController($scope, mlOlHelper, mapLinksService) {
     var ctrl = this;
+    var i = 0;
     ctrl.pointMap = {};
     ctrl.geometries = [];
+    ctrl.mapItemSelected = null;
 
     ctrl.hideLinks = false;
     if ($scope.enableLinks !== undefined) {
       ctrl.hideLinks = !$scope.enableLinks;
+    }
+
+    ctrl.enablePropertiesView = true;
+    if ($scope.enablePropertiesView !== undefined) {
+      ctrl.enablePropertiesView = $scope.enablePropertiesView;
+    }
+
+    if ($scope.groups !== undefined) {
+      for (i = 0; i < $scope.groups.length; i++) {
+        mlOlHelper.setGroupColor($scope.groups[i].name, $scope.groups[i].color);
+      }
     }
 
     $scope.$watch('features', function(data) {
@@ -56,9 +71,9 @@
               $scope.parentSingleClick({ 'feature': feature });
             }
 
-            // if (feature.get('metadata')) {
-            //   ctrl.mapItemSelected = feature.get('metadata');
-            // }
+            if (feature.get('metadata')) {
+              ctrl.mapItemSelected = feature.get('metadata');
+            }
           });
         });
       }
@@ -90,6 +105,10 @@
       ctrl.mapSettings.lineLayer.visible = !ctrl.hideLinks;
     };
 
+    ctrl.closeMetadata = function() {
+      ctrl.mapItemSelected = null;
+    };
+
     ctrl.addLinkedNodes = function(results) {
       var tmpPoints = [];
       var i = 0;
@@ -101,7 +120,10 @@
             properties: {
               name: results.nodes[i].label,
               id: results.nodes[i].id,
-              uri: results.nodes[i].id
+              uri: results.nodes[i].id,
+              group: results.nodes[i].group || 'unknown',
+              count: results.nodes[i].edgeCount || 0,
+              metadata: results.nodes[i].metadata
             },
             geometry: {
               type: 'Point',
@@ -139,7 +161,9 @@
               type: 'Feature',
               id: results.edges[i].id,
               properties: {
-                name: results.edges[i].label
+                name: results.edges[i].label,
+                strength: results.edges[i].strength || 2,
+                metadata: results.edges[i].metadata
               },
               geometry: {
                 type: 'LineString',
@@ -284,7 +308,7 @@
 
     // Define the map settings.
     var tmpMapSettings = mlOlHelper.buildMapSettings();
-    tmpMapSettings.ptLayer.style = mlOlHelper.createPointStyle;
+    tmpMapSettings.ptLayer.style = mlOlHelper.createPointCountStyle;
     tmpMapSettings.lineLayer = $scope.lineLayer ? $scope.lineLayer : defaultLineLayer;
     tmpMapSettings.center.zoom = $scope.zoom ? $scope.zoom : 4;
 

@@ -7,3 +7,19 @@
 .detailMapTools {
   margin-bottom: 10px;
 }
+.map-detail-metadata-container {
+  position: relative;
+  height: 0;
+  width: 100%;
+}
+.map-detail-metadata {
+  background: #f1f2f2;
+  position: absolute;
+  right: 2px;
+  width: 300px;
+  top: 2px;
+  padding: 2px;
+  z-index: 100;
+  border: 1px solid #ccc;
+  font-size: 8pt;
+}
