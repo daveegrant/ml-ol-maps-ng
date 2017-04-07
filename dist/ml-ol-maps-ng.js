@@ -21,7 +21,9 @@
         baseMap: '=',
         zoom: '=',
         geometry: '=',
+        groups: '=',
         enableLinks: '=',
+        enablePropertiesView: '=',
 
         // parent callbacks
         parentSingleClick: '&singleClick',
@@ -36,12 +38,25 @@
   MLOlDetailMapController.$inject = ['$scope', 'mlOlHelper', 'mapLinksService'];
   function MLOlDetailMapController($scope, mlOlHelper, mapLinksService) {
     var ctrl = this;
+    var i = 0;
     ctrl.pointMap = {};
     ctrl.geometries = [];
+    ctrl.mapItemSelected = null;
 
     ctrl.hideLinks = false;
     if ($scope.enableLinks !== undefined) {
       ctrl.hideLinks = !$scope.enableLinks;
+    }
+
+    ctrl.enablePropertiesView = true;
+    if ($scope.enablePropertiesView !== undefined) {
+      ctrl.enablePropertiesView = $scope.enablePropertiesView;
+    }
+
+    if ($scope.groups !== undefined) {
+      for (i = 0; i < $scope.groups.length; i++) {
+        mlOlHelper.setGroupColor($scope.groups[i].name, $scope.groups[i].color);
+      }
     }
 
     $scope.$watch('features', function(data) {
@@ -62,9 +77,9 @@
               $scope.parentSingleClick({ 'feature': feature });
             }
 
-            // if (feature.get('metadata')) {
-            //   ctrl.mapItemSelected = feature.get('metadata');
-            // }
+            if (feature.get('metadata')) {
+              ctrl.mapItemSelected = feature.get('metadata');
+            }
           });
         });
       }
@@ -96,6 +111,10 @@
       ctrl.mapSettings.lineLayer.visible = !ctrl.hideLinks;
     };
 
+    ctrl.closeMetadata = function() {
+      ctrl.mapItemSelected = null;
+    };
+
     ctrl.addLinkedNodes = function(results) {
       var tmpPoints = [];
       var i = 0;
@@ -107,7 +126,10 @@
             properties: {
               name: results.nodes[i].label,
               id: results.nodes[i].id,
-              uri: results.nodes[i].id
+              uri: results.nodes[i].id,
+              group: results.nodes[i].group || 'unknown',
+              count: results.nodes[i].edgeCount || 0,
+              metadata: results.nodes[i].metadata
             },
             geometry: {
               type: 'Point',
@@ -145,7 +167,9 @@
               type: 'Feature',
               id: results.edges[i].id,
               properties: {
-                name: results.edges[i].label
+                name: results.edges[i].label,
+                strength: results.edges[i].strength || 2,
+                metadata: results.edges[i].metadata
               },
               geometry: {
                 type: 'LineString',
@@ -290,7 +314,7 @@
 
     // Define the map settings.
     var tmpMapSettings = mlOlHelper.buildMapSettings();
-    tmpMapSettings.ptLayer.style = mlOlHelper.createPointStyle;
+    tmpMapSettings.ptLayer.style = mlOlHelper.createPointCountStyle;
     tmpMapSettings.lineLayer = $scope.lineLayer ? $scope.lineLayer : defaultLineLayer;
     tmpMapSettings.center.zoom = $scope.zoom ? $scope.zoom : 4;
 
@@ -370,24 +394,43 @@
       '#e8790b', // orange
       '#2433d8', // blue
       '#bb0be8', // purple
-      '#17e804'   // lime-green
+      '#17e804'  // lime-green
     ];
 
-    var createTextStyle = function(text, fColor) {
-      var fillColor = '#f70010';
-      if (fColor) {
-        fillColor = fColor;
-      }
+    // Map for user defined colors based on 'group' property.
+    var groupColorMap = {};
+
+    var createTextStyle = function(text, fColor, sColor, yOffset) {
+      var fillColor = fColor || '#f70010';
+      var strokeColor = sColor || 'white';
+      var yOff = yOffset || 6;
+
       return new ol.style.Text({
         textAlign: 'center',
         textBaseline: 'top',
         font: '12px Arial',
         text: text,
         fill: new ol.style.Fill({color: fillColor}),
-        stroke: new ol.style.Stroke({color: 'white', width: 3}),
+        stroke: new ol.style.Stroke({color: strokeColor, width: 1}),
         offsetX: 0,
-        offsetY: 4,
+        offsetY: yOff,
         rotation: 0
+      });
+    };
+
+    var createTextCountStyle = function(count, fColor, yOffset, xOffset) {
+      var fillColor = fColor || '#f70010';
+      var yOff = yOffset || 6;
+      var xOff = xOffset || 6;
+
+      return new ol.style.Text({
+        textAlign: 'center',
+        textBaseline: 'middle',
+        font: '8pt Arial',
+        text: count.toString(),
+        fill: new ol.style.Fill({color: fillColor}),
+        offsetX: xOff,
+        offsetY: yOff
       });
     };
 
@@ -414,15 +457,30 @@
       ];
 
       geometry.forEachSegment(function(start, end) {
+        var canvas = document.createElement('canvas');
+        var render = canvas.getContext('2d');
         var dx = end[0] - start[0];
         var dy = end[1] - start[1];
         var rotation = Math.atan2(dy, dx);
+
+        render.strokeStyle = 'black';
+        render.fillStyle = 'black';
+        render.lineWidth = 3;
+        render.beginPath();
+        render.moveTo(0,0);
+        render.lineTo(10,10);
+        render.lineTo(0,20);
+        render.stroke();
+
         // arrows
         styles.push(new ol.style.Style({
           geometry: new ol.geom.Point(end),
           image: new ol.style.Icon({
-            src: 'images/arrow-black.png',
-            anchor: [1.5, 0.5],
+            img: canvas,
+            imgSize: [canvas.width, canvas.height],
+            anchor: [26, 10],
+            anchorXUnits: 'pixels',
+            anchorYUnits: 'pixels',
             rotateWithView: false,
             rotation: -rotation
           })
@@ -433,15 +491,92 @@
     };
 
     var createPointStyle = function(feature, resolution) {
-      var radius = 6;
-      return new ol.style.Style({
-        image: new ol.style.Circle({
-          radius: radius,
-          fill: new ol.style.Fill({color: 'red'}),
-          stroke: new ol.style.Stroke({color: 'black', width: 1})
-        }),
-        text: createTextStyle(feature.get('name'))
-      });
+      var radius = 8;
+      var fillColor = 'red';
+      if (feature.get('group')) {
+        var group = feature.get('group');
+        if (group && groupColorMap[group]) {
+          fillColor = groupColorMap[group];
+        }
+      }
+
+      var styles = [
+        new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: radius,
+            fill: new ol.style.Fill({color: fillColor}),
+            stroke: new ol.style.Stroke({color: 'black', width: 1})
+          }),
+          text: createTextStyle(feature.get('name'), fillColor)
+        })
+      ];
+
+      return styles;
+    };
+
+    var createPointCountStyle = function(feature, resolution) {
+      var radius = 16;
+      var fillColor = 'red';
+      var childCount = feature.get('count') || 0;
+      var styles = [];
+
+      if (feature.get('group')) {
+        var group = feature.get('group');
+        if (group && groupColorMap[group]) {
+          fillColor = groupColorMap[group];
+        }
+      }
+
+      styles.push(
+        new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: radius,
+            fill: new ol.style.Fill({color: fillColor}),
+            stroke: new ol.style.Stroke({color: 'black', width: 1})
+          }),
+          text: createTextStyle(feature.get('name'), fillColor, null, radius)
+        })
+      );
+
+      if (childCount > 0) {
+        var cRadius = 10;
+        var textColor = 'white';
+        var canvas = document.createElement('canvas');
+        var render = canvas.getContext('2d');
+
+        if (childCount >= 100 && childCount < 1000) {
+          cRadius = 12;
+        }
+        else if (childCount >= 1000 && childCount < 10000) {
+          cRadius = 15;
+        }
+        else if (childCount >= 10000) {
+          cRadius = 17;
+        }
+
+        render.strokeStyle = 'white';
+        render.fillStyle = '#848484';
+        render.lineWidth = 1;
+        render.beginPath();
+        render.arc(cRadius, cRadius, cRadius, 0, 2 * Math.PI);
+        render.fill();
+        render.stroke();
+
+        styles.push(
+          new ol.style.Style({
+            image: new ol.style.Icon({
+              img: canvas,
+              imgSize: [canvas.width, canvas.height],
+              anchor: [cRadius + 15, 20],
+              anchorXUnits: 'pixels',
+              anchorYUnits: 'pixels'
+            }),
+            text: createTextCountStyle(childCount, textColor, cRadius - 20, -15)
+          })
+        );
+      }
+
+      return styles;
     };
 
     var createClusterPointStyle = function(feature, resolution) {
@@ -473,7 +608,7 @@
           fill: new ol.style.Fill({color: markerColors[colorIdx]}),
           stroke: new ol.style.Stroke({color: 'black', width: strokeWidth, lineDash: lineDash})
         }),
-        text: (count > 1) ? createClusterTextStyle(''+ count) : createTextStyle('')
+        text: (count > 1) ? createClusterTextStyle(count.toString()) : createTextStyle('')
       });
     };
 
@@ -550,14 +685,21 @@
       return settings;
     };
 
+    var setGroupColor = function(group, color) {
+      groupColorMap[group] = color;
+    };
+
     return {
       createTextStyle: createTextStyle,
+      createTextCountStyle: createTextCountStyle,
       createPointStyle: createPointStyle,
+      createPointCountStyle: createPointCountStyle,
       createClusterPointStyle: createClusterPointStyle,
       createClusterTextStyle: createClusterTextStyle,
       createLineStyle: createLineStyle,
       convertExtent: convertExtent,
-      buildMapSettings: buildMapSettings
+      buildMapSettings: buildMapSettings,
+      setGroupColor: setGroupColor
     };
   }
 
