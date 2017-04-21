@@ -1,6 +1,6 @@
 {
   "name": "ml-ol-maps-ng",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "AngularJS directives with OpenLayers Maps integration for use with MarkLogic REST-api.",
   "main": [
     "dist/ml-ol-maps-ng.js",
