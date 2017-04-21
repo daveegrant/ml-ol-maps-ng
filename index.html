@@ -31,7 +31,8 @@
           <h1>
 <a id="overview" class="anchor" href="#overview" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Overview</h1>
 
-<p>Includes directives to display MarkLogic search results on a map.  Also includes a directive to display single item on a detailed map.</p>
+<p>Includes directives to display MarkLogic search results on a map.</p>
+<p>Also includes a directive to display single item on a detailed map.  The detail map directive also supports showing links between items.</p>
 
 <h2>Key Features:</h2>
 <ul>
@@ -56,6 +57,32 @@
 
     <div>
       <pre><code>bower install [--save] ml-ol-maps-ng</code></pre>
+    </div>
+
+    <p></p>
+  </li>
+  <li>
+    <p>If using the link analysis portion of the detail map, you can use the default graphSearch and graphExpand functions, which return the node and link data.  To use the default functions, you must install the <a href="https://github.com/daveegrant/map-links">mlpm module</a>.  If you want to create your own, this mlpm module code could be used as a starting point.</p>
+
+    <div>
+      <pre><code>
+npm install -g mlpm
+mlpm install map-links --save
+mlpm deploy -H localhost -P 8040 -u admin -p admin</code></pre>
+    </div>
+
+    <b>Enable Triple Index</b>
+    <p>Since this library works based on SPARQL queries against triples stored in your MarkLogic database, you need to enable the triple index.</p>
+
+  </li>
+  <li>
+    <p>If using the link analysis portion of the detail map, you can use the default graphSearch and graphExpand functions, which return the node and link data.  To use the default functions, you must install the <a href="https://github.com/daveegrant/map-links">mlpm module</a>.  If you want to create your own, this mlpm module code could be used as a starting point.</p>
+
+    <div>
+      <pre><code>
+npm install -g mlpm
+mlpm install map-links --save
+mlpm deploy -H localhost -P 8040 -u admin -p admin</code></pre>
     </div>
 
     <p></p>
@@ -354,6 +381,8 @@ function MyCtrl($scope) {
 
 <p>If using the <code>features</code> attribute, the data must be created as a <a href="http://geojson.org/geojson-spec.html#feature-objects">GeoJSON feature object</a>.  It is recommended that the 'properties' property of the feature object is used to store important attributes of the feature.  Specifically, the 'name' and 'uri' properties are used display data on the map.  The 'name' property is used to label the point on the map.  The 'uri' property is used when a point is clicked on the map.</p>
 
+<p>The <code>ml-ol-detail-map</code> directive has the ability to display links between the default node by calling a service to get link data.  The <code>enable-links</code> attribute is used to activate the displaying of links.  When active, a node can be double-clicked to invoke the service to get linked data.  When the <code>enable-properties-view</code> attribute is activated, a single-click on a node on the map will display the metadata for that point.</p>
+
 <h3>Attributes:</h3>
 
 <ul>
@@ -370,7 +399,19 @@ function MyCtrl($scope) {
     <code>zoom</code> (<i>optional</i>): A number indicating the zoom level.  If not specified, the default is 5.
   </li>
   <li>
-    <code>single-click</code> (<i>optional</i>): The callback function reference when the map is single clicked.  When a feature (point) is clicked on the map, the feature URI is the function parameter.
+    <code>enable-links</code> (<i>optional</i>): A boolean value representing whether link data should be displayed.  If not specified, the default is 'true'.
+  </li>
+  <li>
+    <code>enable-properties-view</code> (<i>optional</i>): A boolean value representing whether feature/point metadata should be displayed when single-clicked.  If not specified, the default is 'true'.
+  </li>
+  <li>
+    <code>groups</code> (<i>optional</i>): An array of objects that specify colors for groups of data when link data is shown.  The 'group' property of the feature/point is used to determine the color used to represent it on the map.  If not specified, the default color (red) is used for all nodes.
+  </li>
+  <li>
+    <code>single-click</code> (<i>optional</i>): The callback function reference when the map is single-clicked.  When a feature (point) is clicked on the map, the feature URI is the function parameter.
+  </li>
+  <li>
+    <code>double-click</code> (<i>optional</i>): The callback function reference when the map is double-clicked.  When a feature (point) is clicked on the map, the feature URI is the function parameter.
   </li>
 </ul>
 
@@ -394,7 +435,11 @@ function MyCtrl($scope) {
       source: {
         type: 'OSM'
       }
-    }
+    },
+    groups: [
+      { name: 'http://xmlns.com/foaf/0.1/Person', color: 'blue'},
+      { name: 'http://xmlns.com/foaf/0.1/Organization', color: 'orange'},
+    ]
   };
 
   ctrl.myFeatures = [
@@ -402,7 +447,8 @@ function MyCtrl($scope) {
       type: 'Feature',
       properties: {
         name: 'Fred Blackstone',
-        uri: '/data/fred-blackstone.json'
+        uri: '/data/fred-blackstone.json',
+        group: 'http://xmlns.com/foaf/0.1/Person'
       },
       geometry: {
         type: 'Point',
@@ -413,7 +459,8 @@ function MyCtrl($scope) {
       type: 'Feature',
       properties: {
         name: 'James Gray',
-        uri: '/data/james-gray.json'
+        uri: '/data/james-gray.json',
+        group: 'http://xmlns.com/foaf/0.1/Person'
       },
       geometry: {
         type: 'Point',
@@ -424,11 +471,24 @@ function MyCtrl($scope) {
       type: 'Feature',
       properties: {
         name: 'Jason Fitzgerald',
-        uri: '/data/jason-fitzgerald.json'
+        uri: '/data/jason-fitzgerald.json',
+        group: 'http://xmlns.com/foaf/0.1/Person'
       },
       geometry: {
         type: 'Point',
         coordinates: [5.0297, 6.6382]
+      }
+    },
+    {
+      type: 'Feature',
+      properties: {
+        name: 'Acme',
+        uri: '/data/acme.json',
+        group: 'http://xmlns.com/foaf/0.1/Organization'
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [4.0970, 6.6382]
       }
     }
   ];
@@ -446,7 +506,7 @@ function MyCtrl($scope) {
     <p>Add <code>ml-ol-detail-map</code> element in your template:</p>
 
     <div>
-      <pre><code>&lt;ml-ol-detail-map features="ctrl.myFeatures" zoom="ctrl.mapOptions.zoom" base-map="ctrl.mapOptions.baseMap" single-click="ctrl.mapSingleClick(featureUri)"&gt;&lt;/ml-ol-detail-map&gt;</code></pre>
+      <pre><code>&lt;ml-ol-detail-map features="ctrl.myFeatures" zoom="ctrl.mapOptions.zoom" base-map="ctrl.mapOptions.baseMap" groups="ctrl.mapOptions.groups" enable-properties-view="false" single-click="ctrl.mapSingleClick(featureUri)"&gt;&lt;/ml-ol-detail-map&gt;</code></pre>
     </div>
 
     <p></p>
